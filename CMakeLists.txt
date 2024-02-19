@@ -4,8 +4,11 @@ project( EmptyDemo )
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17") 
 
+add_compile_options(-Wno-c++98-compat -Wno-c++98-compat-pedantic)
+
+set(ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 
 include(cmake/big2.cmake)
 
