@@ -28,7 +28,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/trigonometric.hpp>
-#include <glm/gtx/matrix_operation.hpp>
+ #define GLM_ENABLE_EXPERIMENTAL 
+ #include <glm/gtx/matrix_operation.hpp>
 #include <bx/file.h>
 #include <bimg/decode.h>
 #include <algorithm>
@@ -63,6 +64,8 @@ struct Mesh
         static bgfx::VertexLayout layout;
     };
 };
+
+bgfx::VertexLayout Mesh::PosNormalTangentTex0Vertex::layout;
 
 
 Mesh loadMesh(const aiMesh* mesh)
