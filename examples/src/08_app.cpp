@@ -102,8 +102,6 @@ Mesh loadMesh(const aiMesh* mesh)
 
         //std::cout << pos.x << ", " << pos.y << ", "<< pos.z << std::endl;
 
-        vertex.color = 0xFF00FFFF;
-
         aiVector3D nrm = mesh->mNormals[i];
         vertex.nx = nrm.x;
         vertex.ny = nrm.y;
@@ -120,6 +118,11 @@ Mesh loadMesh(const aiMesh* mesh)
             vertex.u = uv.x;
             vertex.v = uv.y;
         }
+        else {
+            vertex.color = 0xFFFFFFFF;
+        }
+
+        // TODO: 目前还不清楚如何接入外部的Texture
     }
 
     bgfx::VertexBufferHandle vbh = bgfx::createVertexBuffer(vertexMem, Mesh::PosNormalTangentTex0Vertex::layout);
@@ -250,7 +253,7 @@ class TriangleRenderAppExtension final : public big2::AppExtensionBase {
       );
        
       // TODO:
-      sceneMeshes = loadMeshFromFile("D:/assets/suzanne.fbx");
+      sceneMeshes = loadMeshFromFile("D:/assets/suzanne_tex.fbx");
 
       dUniform = bgfx::createUniform("normMat", bgfx::UniformType::Mat3 );
     }
