@@ -178,9 +178,9 @@ std::vector<Mesh> loadMeshFromFile(const char* file) {
     return meshes;
 }
 
-bgfx::UniformHandle normalMatrixUniform = BGFX_INVALID_HANDLE;
+bgfx::UniformHandle dUniform = BGFX_INVALID_HANDLE;
 
-void setNormalMatrix(const glm::mat4& modelMat)
+void demoSetUniform(const glm::mat4& modelMat)
 {
     // usually the normal matrix is based on the model view matrix
     // but shading is done in world space (not eye space) so it's just the model matrix
@@ -194,7 +194,7 @@ void setNormalMatrix(const glm::mat4& modelMat)
     // see https://github.com/graphitemaster/normals_revisited#the-details-of-transforming-normals
     // cofactor is the transpose of the adjugate
     glm::mat3 normalMat = glm::transpose(glm::adjugate(glm::mat3(modelMat)));
-    bgfx::setUniform(normalMatrixUniform, glm::value_ptr(normalMat));
+    bgfx::setUniform(dUniform, glm::value_ptr(normalMat));
 }
 
 static const bgfx::EmbeddedShader kEmbeddedShaders[] =
@@ -235,23 +235,23 @@ class TriangleRenderAppExtension final : public big2::AppExtensionBase {
         | BGFX_STATE_WRITE_A
       );
 
-      /*bgfx::setVertexBuffer(0, vertex_buffer_);
+      bgfx::setVertexBuffer(0, vertex_buffer_);
       bgfx::setIndexBuffer(index_buffer_);
-      bgfx::submit(window.GetView(), program_);*/
+      bgfx::submit(window.GetView(), program_);
 
 
-      for (const Mesh& mesh : sceneMeshes)
-      {
-          glm::mat4 model = glm::identity<glm::mat4>();
-          bgfx::setTransform(glm::value_ptr(model));
-          setNormalMatrix(model);
-          bgfx::setVertexBuffer(0, mesh.vertexBuffer);
-          bgfx::setIndexBuffer(mesh.indexBuffer);
-          // const Material& mat = scene->materials[mesh.material];
-          // uint64_t materialState = pbr.bindMaterial(mat);
-          // bgfx::setState(state | materialState);
-          bgfx::submit(window.GetView(), program_, 0, ~BGFX_DISCARD_BINDINGS);
-      }
+      //for (const Mesh& mesh : sceneMeshes)
+      //{
+      //    glm::mat4 model = glm::identity<glm::mat4>();
+      //    bgfx::setTransform(glm::value_ptr(model));
+      //    demoSetUniform(model);
+      //    bgfx::setVertexBuffer(0, mesh.vertexBuffer);
+      //    bgfx::setIndexBuffer(mesh.indexBuffer);
+      //     //const Material& mat = scene->materials[mesh.material];
+      //     //uint64_t materialState = pbr.bindMaterial(mat);
+      //     //bgfx::setState(state | materialState);
+      //    bgfx::submit(window.GetView(), program_, 0, ~BGFX_DISCARD_BINDINGS);
+      //}
 
       bgfx::discard(BGFX_DISCARD_ALL);
 
@@ -286,6 +286,8 @@ class TriangleRenderAppExtension final : public big2::AppExtensionBase {
 
       // TODO:
       sceneMeshes = loadMeshFromFile("D:/assets/suzanne.fbx");
+
+      dUniform = bgfx::createUniform("normMat", bgfx::UniformType::Mat3 );
     }
 
     void OnTerminate() override {
@@ -302,6 +304,7 @@ class TriangleRenderAppExtension final : public big2::AppExtensionBase {
           mesh.indexBuffer = BGFX_INVALID_HANDLE;
       }
       sceneMeshes.clear();
+      bgfx::destroy(dUniform);
     }
 
   private:
