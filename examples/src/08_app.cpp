@@ -48,6 +48,7 @@ struct Mesh
     struct PosNormalTangentTex0Vertex
     {
         float x, y, z;    // position
+        uint32_t color;   // color
         float nx, ny, nz; // normal
         float tx, ty, tz; // tangent
         float u, v;       // UV coordinates
@@ -56,6 +57,7 @@ struct Mesh
         {
             layout.begin()
                 .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
                 .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
                 .add(bgfx::Attrib::Tangent, 3, bgfx::AttribType::Float)
                 .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
@@ -93,9 +95,14 @@ Mesh loadMesh(const aiMesh* mesh)
         Mesh::PosNormalTangentTex0Vertex& vertex = *(Mesh::PosNormalTangentTex0Vertex*)(vertexMem->data + offset);
 
         aiVector3D pos = mesh->mVertices[i];
-        vertex.x = pos.x;
-        vertex.y = pos.y;
-        vertex.z = pos.z;
+
+        vertex.x = pos.x / 500.0f;
+        vertex.y = pos.y / 500.0f;
+        vertex.z = pos.z / 500.0f;
+
+        //std::cout << pos.x << ", " << pos.y << ", "<< pos.z << std::endl;
+
+        vertex.color = 0xFF00FFFF;
 
         aiVector3D nrm = mesh->mNormals[i];
         vertex.nx = nrm.x;
@@ -182,17 +189,6 @@ bgfx::UniformHandle dUniform = BGFX_INVALID_HANDLE;
 
 void demoSetUniform(const glm::mat4& modelMat)
 {
-    // usually the normal matrix is based on the model view matrix
-    // but shading is done in world space (not eye space) so it's just the model matrix
-    //glm::mat4 modelViewMat = viewMat * modelMat;
-
-    // if we don't do non-uniform scaling, the normal matrix is the same as the model-view matrix
-    // (only the magnitude of the normal is changed, but we normalize either way)
-    //glm::mat3 normalMat = glm::mat3(modelMat);
-
-    // use adjugate instead of inverse
-    // see https://github.com/graphitemaster/normals_revisited#the-details-of-transforming-normals
-    // cofactor is the transpose of the adjugate
     glm::mat3 normalMat = glm::transpose(glm::adjugate(glm::mat3(modelMat)));
     bgfx::setUniform(dUniform, glm::value_ptr(normalMat));
 }
@@ -202,23 +198,6 @@ static const bgfx::EmbeddedShader kEmbeddedShaders[] =
   BGFX_EMBEDDED_SHADER(vs_basic),
   BGFX_EMBEDDED_SHADER(fs_basic),
   BGFX_EMBEDDED_SHADER_END()
-};
-
-struct NormalColorVertex {
-  glm::vec2 position;
-  uint32_t color;
-};
-
-NormalColorVertex kTriangleVertices[] =
-{
-  {{-0.5f, -0.5f}, 0x339933FF},
-  {{0.5f, -0.5f}, 0x993333FF},
-  {{0.0f, 0.5f}, 0x333399FF},
-};
-
-const uint16_t kTriangleIndices[] =
-{
-  0, 1, 2,
 };
 
 class TriangleRenderAppExtension final : public big2::AppExtensionBase {
@@ -235,23 +214,18 @@ class TriangleRenderAppExtension final : public big2::AppExtensionBase {
         | BGFX_STATE_WRITE_A
       );
 
-      bgfx::setVertexBuffer(0, vertex_buffer_);
-      bgfx::setIndexBuffer(index_buffer_);
-      bgfx::submit(window.GetView(), program_);
-
-
-      //for (const Mesh& mesh : sceneMeshes)
-      //{
-      //    glm::mat4 model = glm::identity<glm::mat4>();
-      //    bgfx::setTransform(glm::value_ptr(model));
-      //    demoSetUniform(model);
-      //    bgfx::setVertexBuffer(0, mesh.vertexBuffer);
-      //    bgfx::setIndexBuffer(mesh.indexBuffer);
-      //     //const Material& mat = scene->materials[mesh.material];
-      //     //uint64_t materialState = pbr.bindMaterial(mat);
-      //     //bgfx::setState(state | materialState);
-      //    bgfx::submit(window.GetView(), program_, 0, ~BGFX_DISCARD_BINDINGS);
-      //}
+      for (const Mesh& mesh : sceneMeshes)
+      {
+          glm::mat4 model = glm::identity<glm::mat4>();
+          bgfx::setTransform(glm::value_ptr(model));
+          demoSetUniform(model);
+          bgfx::setVertexBuffer(0, mesh.vertexBuffer);
+          bgfx::setIndexBuffer(mesh.indexBuffer);
+           //const Material& mat = scene->materials[mesh.material];
+           //uint64_t materialState = pbr.bindMaterial(mat);
+           //bgfx::setState(state | materialState);
+          bgfx::submit(window.GetView(), program_, 0, ~BGFX_DISCARD_BINDINGS);
+      }
 
       bgfx::discard(BGFX_DISCARD_ALL);
 
@@ -268,22 +242,13 @@ class TriangleRenderAppExtension final : public big2::AppExtensionBase {
     void OnInitialize() override {
       AppExtensionBase::OnInitialize();
 
-      bgfx::VertexLayout color_vertex_layout;
-      color_vertex_layout.begin()
-          .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-          .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
-          .end();
-
-      vertex_buffer_ = bgfx::createVertexBuffer(bgfx::makeRef(kTriangleVertices, sizeof(kTriangleVertices)), color_vertex_layout);
-      index_buffer_ = bgfx::createIndexBuffer(bgfx::makeRef(kTriangleIndices, sizeof(kTriangleIndices)));
-
       bgfx::RendererType::Enum renderer_type = bgfx::getRendererType();
       program_ = bgfx::createProgram(
         bgfx::createEmbeddedShader(kEmbeddedShaders, renderer_type, "vs_basic"),
         bgfx::createEmbeddedShader(kEmbeddedShaders, renderer_type, "fs_basic"),
         true
       );
-
+       
       // TODO:
       sceneMeshes = loadMeshFromFile("D:/assets/suzanne.fbx");
 
@@ -292,8 +257,6 @@ class TriangleRenderAppExtension final : public big2::AppExtensionBase {
 
     void OnTerminate() override {
       AppExtensionBase::OnTerminate();
-      vertex_buffer_.Destroy();
-      index_buffer_.Destroy();
       program_.Destroy();
 
       for (Mesh& mesh : sceneMeshes)
@@ -308,8 +271,6 @@ class TriangleRenderAppExtension final : public big2::AppExtensionBase {
     }
 
   private:
-    big2::VertexBufferScopedHandle vertex_buffer_;
-    big2::IndexBufferScopedHandle index_buffer_;
     big2::ProgramScopedHandle program_;
 
     std::vector<Mesh> sceneMeshes;
