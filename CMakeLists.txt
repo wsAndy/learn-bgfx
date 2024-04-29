@@ -18,4 +18,6 @@ include(cmake/big2.cmake)
 
 add_subdirectory(external)
 
-add_subdirectory(examples)
+#add_subdirectory(examples)
+
+add_subdirectory(src)

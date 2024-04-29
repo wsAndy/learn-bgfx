@@ -1,7 +1,9 @@
 //
-// Copyright (c) 2023 Paper Cranes Ltd.
-// All rights reserved.
+// Created by admin on 2024/4/29.
 //
+
+#ifndef EMPTYDEMO_CLUSTER_H
+#define EMPTYDEMO_CLUSTER_H
 
 #include <big2.h>
 
@@ -14,7 +16,7 @@
 
 #include <GLFW/glfw3.h>
 #include <big2/bgfx/embedded_shader.h>
-#include <generated/shaders/examples/all.h>
+#include <generated/shaders/src/all.h>
 
 #include <iostream>
 #include <assimp/DefaultLogger.hpp>
@@ -28,11 +30,14 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/trigonometric.hpp>
- #define GLM_ENABLE_EXPERIMENTAL 
- #include <glm/gtx/matrix_operation.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/matrix_operation.hpp>
 #include <bx/file.h>
 #include <bimg/decode.h>
 #include <algorithm>
+#include <filesystem>
+
+#include "Log/Log.h"
 
 
 struct Mesh
@@ -56,12 +61,12 @@ struct Mesh
         static void init()
         {
             layout.begin()
-                .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
-                .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::Tangent, 3, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
-                .end();
+                    .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+                    .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+                    .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
+                    .add(bgfx::Attrib::Tangent, 3, bgfx::AttribType::Float)
+                    .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+                    .end();
         }
         static bgfx::VertexLayout layout;
     };
@@ -100,7 +105,7 @@ Mesh loadMesh(const aiMesh* mesh)
         vertex.y = pos.y / 500.0f;
         vertex.z = pos.z / 500.0f;
 
-        //std::cout << pos.x << ", " << pos.y << ", "<< pos.z << std::endl;
+        std::cout << pos.x << ", " << pos.y << ", "<< pos.z << std::endl;
 
         aiVector3D nrm = mesh->mNormals[i];
         vertex.nx = nrm.x;
@@ -118,11 +123,10 @@ Mesh loadMesh(const aiMesh* mesh)
             vertex.u = uv.x;
             vertex.v = uv.y;
         }
-        else {
+        // else
+        {
             vertex.color = 0xFFFFFFFF;
         }
-
-        // TODO: 目前还不清楚如何接入外部的Texture
     }
 
     bgfx::VertexBufferHandle vbh = bgfx::createVertexBuffer(vertexMem, Mesh::PosNormalTangentTex0Vertex::layout);
@@ -145,7 +149,19 @@ Mesh loadMesh(const aiMesh* mesh)
     return { vbh, ibh, mesh->mMaterialIndex };
 }
 
+
+bool fileExists(const std::string& name) {
+    return std::filesystem::exists(name);
+}
+
 std::vector<Mesh> loadMeshFromFile(const char* file) {
+
+    std::vector<Mesh> meshes;
+
+    if( !fileExists(file)){
+        std::cout << "Error, " << file << " not exists!" <<std::endl;
+        return meshes;
+    }
 
     Assimp::Importer importer;
 
@@ -157,13 +173,13 @@ std::vector<Mesh> loadMeshFromFile(const char* file) {
     importer.SetPropertyInteger(AI_CONFIG_PP_SLM_VERTEX_LIMIT, std::numeric_limits<uint16_t>::max());
 
     unsigned int flags =
-        aiProcessPreset_TargetRealtime_Quality |                     // some optimizations and safety checks
-        aiProcess_OptimizeMeshes |                                   // minimize number of meshes
-        aiProcess_PreTransformVertices |                             // apply node matrices
-        aiProcess_FixInfacingNormals | aiProcess_TransformUVCoords | // apply UV transformations
-        //aiProcess_FlipWindingOrder   | // we cull clock-wise, keep the default CCW winding order
-        aiProcess_MakeLeftHanded | // we set GLM_FORCE_LEFT_HANDED and use left-handed bx matrix functions
-        aiProcess_FlipUVs;         // bimg loads textures with flipped Y (top left is 0,0)
+            aiProcessPreset_TargetRealtime_Quality |                     // some optimizations and safety checks
+            aiProcess_OptimizeMeshes |                                   // minimize number of meshes
+            aiProcess_PreTransformVertices |                             // apply node matrices
+            aiProcess_FixInfacingNormals | aiProcess_TransformUVCoords | // apply UV transformations
+            //aiProcess_FlipWindingOrder   | // we cull clock-wise, keep the default CCW winding order
+            aiProcess_MakeLeftHanded | // we set GLM_FORCE_LEFT_HANDED and use left-handed bx matrix functions
+            aiProcess_FlipUVs;         // bimg loads textures with flipped Y (top left is 0,0)
 
     const aiScene* scene = nullptr;
     try
@@ -174,8 +190,7 @@ std::vector<Mesh> loadMeshFromFile(const char* file) {
     {
         std::cout << e.what() << std::endl;
     }
-    
-    std::vector<Mesh> meshes;
+
 
 
     if (!scene) { return meshes; }
@@ -197,99 +212,87 @@ void demoSetUniform(const glm::mat4& modelMat)
 }
 
 static const bgfx::EmbeddedShader kEmbeddedShaders[] =
-{
-  BGFX_EMBEDDED_SHADER(vs_basic),
-  BGFX_EMBEDDED_SHADER(fs_basic),
-  BGFX_EMBEDDED_SHADER_END()
-};
+        {
+                BGFX_EMBEDDED_SHADER(vs_basic),
+                BGFX_EMBEDDED_SHADER(fs_basic),
+                BGFX_EMBEDDED_SHADER_END()
+        };
 
-class TriangleRenderAppExtension final : public big2::AppExtensionBase {
-  protected:
+class Cluster  final : public big2::AppExtensionBase {
+protected:
     void OnFrameBegin() override {
-      AppExtensionBase::OnFrameBegin();
+        AppExtensionBase::OnFrameBegin();
     }
     void OnRender(big2::Window &window) override {
-      AppExtensionBase::OnRender(window);
-      bgfx::setState(
-        BGFX_STATE_WRITE_R
-        | BGFX_STATE_WRITE_G
-        | BGFX_STATE_WRITE_B
-        | BGFX_STATE_WRITE_A
-      );
+        AppExtensionBase::OnRender(window);
+        bgfx::setState(
+                BGFX_STATE_WRITE_R
+                | BGFX_STATE_WRITE_G
+                | BGFX_STATE_WRITE_B
+                | BGFX_STATE_WRITE_A
+        );
 
-      for (const Mesh& mesh : sceneMeshes)
-      {
-          glm::mat4 model = glm::identity<glm::mat4>();
-          bgfx::setTransform(glm::value_ptr(model));
-          demoSetUniform(model);
-          bgfx::setVertexBuffer(0, mesh.vertexBuffer);
-          bgfx::setIndexBuffer(mesh.indexBuffer);
-           //const Material& mat = scene->materials[mesh.material];
-           //uint64_t materialState = pbr.bindMaterial(mat);
-           //bgfx::setState(state | materialState);
-          bgfx::submit(window.GetView(), program_, 0, ~BGFX_DISCARD_BINDINGS);
-      }
+        for (const Mesh& mesh : sceneMeshes)
+        {
+            glm::mat4 model = glm::identity<glm::mat4>();
+            bgfx::setTransform(glm::value_ptr(model));
+            demoSetUniform(model);
+            bgfx::setVertexBuffer(0, mesh.vertexBuffer);
+            bgfx::setIndexBuffer(mesh.indexBuffer);
+            //const Material& mat = scene->materials[mesh.material];
+            //uint64_t materialState = pbr.bindMaterial(mat);
+            //bgfx::setState(state | materialState);
+            bgfx::submit(window.GetView(), program_, 0, ~BGFX_DISCARD_BINDINGS);
+        }
 
-      bgfx::discard(BGFX_DISCARD_ALL);
+        bgfx::discard(BGFX_DISCARD_ALL);
 
 
 #if BIG2_IMGUI_ENABLED
-      BIG2_SCOPE_VAR(big2::ImGuiFrameScoped) {
+        BIG2_SCOPE_VAR(big2::ImGuiFrameScoped) {
         ImGui::ShowDemoWindow();
       }
 #endif // BIG2_IMGUI_ENABLED
     }
     void OnFrameEnd() override {
-      AppExtensionBase::OnFrameEnd();
+        AppExtensionBase::OnFrameEnd();
     }
     void OnInitialize() override {
-      AppExtensionBase::OnInitialize();
+        AppExtensionBase::OnInitialize();
 
-      bgfx::RendererType::Enum renderer_type = bgfx::getRendererType();
-      program_ = bgfx::createProgram(
-        bgfx::createEmbeddedShader(kEmbeddedShaders, renderer_type, "vs_basic"),
-        bgfx::createEmbeddedShader(kEmbeddedShaders, renderer_type, "fs_basic"),
-        true
-      );
-       
-      // TODO:
-      sceneMeshes = loadMeshFromFile("D:/assets/suzanne_tex.fbx");
+        bgfx::RendererType::Enum renderer_type = bgfx::getRendererType();
+        program_ = bgfx::createProgram(
+                bgfx::createEmbeddedShader(kEmbeddedShaders, renderer_type, "vs_basic"),
+                bgfx::createEmbeddedShader(kEmbeddedShaders, renderer_type, "fs_basic"),
+                true
+        );
 
-      dUniform = bgfx::createUniform("normMat", bgfx::UniformType::Mat3 );
+        sceneMeshes = loadMeshFromFile("E:\\DigitalAssetsCreateTool\\learn-bgfx\\assets\\models\\cube-1mx1m.fbx");
+
+        dUniform = bgfx::createUniform("normMat", bgfx::UniformType::Mat3 );
     }
 
     void OnTerminate() override {
-      AppExtensionBase::OnTerminate();
-      program_.Destroy();
+        AppExtensionBase::OnTerminate();
+        program_.Destroy();
 
-      for (Mesh& mesh : sceneMeshes)
-      {
-          bgfx::destroy(mesh.vertexBuffer);
-          bgfx::destroy(mesh.indexBuffer);
-          mesh.vertexBuffer = BGFX_INVALID_HANDLE;
-          mesh.indexBuffer = BGFX_INVALID_HANDLE;
-      }
-      sceneMeshes.clear();
-      bgfx::destroy(dUniform);
+        for (Mesh& mesh : sceneMeshes)
+        {
+            bgfx::destroy(mesh.vertexBuffer);
+            bgfx::destroy(mesh.indexBuffer);
+            mesh.vertexBuffer = BGFX_INVALID_HANDLE;
+            mesh.indexBuffer = BGFX_INVALID_HANDLE;
+        }
+        sceneMeshes.clear();
+        bgfx::destroy(dUniform);
     }
 
-  private:
+private:
     big2::ProgramScopedHandle program_;
 
     std::vector<Mesh> sceneMeshes;
 };
 
-int main(std::int32_t, gsl::zstring []) {
-  big2::App app;
 
-  app.AddExtension<big2::DefaultQuitConditionAppExtension>();
-#if BIG2_IMGUI_ENABLED
-  app.AddExtension<big2::ImGuiAppExtension>();
-#endif // BIG2_IMGUI_ENABLED
-  app.AddExtension<TriangleRenderAppExtension>();
 
-  app.CreateWindow("My App", {800, 600});
-  app.Run();
-
-  return 0;
-}
+#endif //EMPTYDEMO_CLUSTER_H
